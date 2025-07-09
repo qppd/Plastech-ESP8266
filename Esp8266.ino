@@ -8,9 +8,10 @@ void setup() {
 
   initFIREBASE();
 
-  delay(3000);
-  sendFIREBASEData(1,2,3,4,5,6);
-  sendMessage();
+  // delay(3000);
+  
+  // sendFIREBASEData(1,2,3,4,5,6);
+  // sendMessage();
 }
 
 int bottle_large;

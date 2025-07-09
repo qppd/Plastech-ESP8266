@@ -20,15 +20,75 @@ const char PRIVATE_KEY[] PROGMEM = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgk
 #define USER_EMAIL "sajedhm@gmail.com"
 #define USER_PASSWORD "Jedtala01+"
 
-// Device Token for FCM
 #define DEVICE_REGISTRATION_ID_TOKEN "fho5o_l-SrOaUVkrrp4Af9:APA91bHxdYtuEyTATtPiv8bnXlYYtFZ_JKjKSpoqk1RPElBz6Ebe0NmkPLTZ2Embn8PYEqiB1DA_OrQ1WPgixyF0s-FbyXMKNfmMmLphXoMSqaS06xXePBo"
 
-// Firebase objects
+
+
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
+FirebaseData tokenStream;
+
+String tokenParentPath = "plastech";
+String tokenPaths[1] = { "/tokens" };
+
+
 unsigned long sendDataPrevMillis = 0;
+
+
+void tokenStreamCallback(MultiPathStream stream) {
+  // Check if the stream updated /tokens
+  if (stream.get("/tokens")) {
+    Serial.println("token Updated Path: " + stream.dataPath);
+    Serial.println("token New Value: " + stream.value);
+
+    FirebaseJson json;
+    FirebaseJsonData result;
+
+    // Clear any previous JSON content before loading new data
+    json.clear();
+    json.setJsonData(stream.value);
+
+    // Begin iterating through all children under /tokens
+    size_t count = json.iteratorBegin();
+
+    for (size_t i = 0; i < count; i++) {
+      FirebaseJson::IteratorValue value = json.valueAt(i);
+      String pushID = value.key;
+
+      // Skip any key that doesn't contain a nested object
+      if (!value.value.startsWith("{")) {
+        Serial.println("⚠️  Ignored non-object key: " + pushID);
+        continue;
+      }
+
+      String fullPath = pushID + "/device_token";
+
+      if (json.get(result, fullPath)) {
+        String deviceToken = result.stringValue;
+        Serial.println("✅ Extracted device_token from " + pushID + ": " + deviceToken);
+      } else {
+        Serial.println("⚠️  Skipping key (no device_token): " + pushID);
+      }
+    }
+
+
+    // End iteration
+    json.iteratorEnd();
+  }
+}
+
+
+
+void tokenStreamTimeoutCallback(bool timeout) {
+  if (timeout) {
+    Serial.println("token stream timed out, attempting to resume...");  // Notify of timeout
+  }
+  if (!tokenStream.httpConnected()) {
+    Serial.printf("token Error code: %d, reason: %s\n", tokenStream.httpCode(), tokenStream.errorReason().c_str());  // Output HTTP error details if disconnected
+  }
+}
 
 void initFIREBASE() {
   // Connect to Wi-Fi
@@ -74,12 +134,12 @@ void initFIREBASE() {
     delay(100);
   }
 
-  // Confirm login success
-  if (auth.token.uid.length() > 0) {
-    Serial.print("Signed in as UID: ");
-    Serial.println(auth.token.uid.c_str());
+  Serial.println("Starting token stream");
+  if (!Firebase.RTDB.beginMultiPathStream(&tokenStream, tokenParentPath)) {
+    Serial.printf("token stream initialization failed: %s\n", tokenStream.errorReason().c_str());  // Output error if stream setup fails
   } else {
-    Serial.println("Sign-in failed.");
+    Firebase.RTDB.setMultiPathStreamCallback(&tokenStream, tokenStreamCallback, tokenStreamTimeoutCallback);  // Assign callback functions for stream
+    Serial.println("Firebase token stream initialized successfully!");                                        // Output success message for stream initialization
   }
 }
 
@@ -115,9 +175,7 @@ void sendMessage() {
   msg.notification.title = "Notification title";
 
   FirebaseJson payload;
-  payload.add("temp", "28");
-  payload.add("unit", "celsius");
-  payload.add("timestamp", "1609815454");
+  payload.add("status", "1");
 
   msg.data = payload.raw();
 
