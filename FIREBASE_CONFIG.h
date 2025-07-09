@@ -5,23 +5,13 @@
 #include "addons/TokenHelper.h"
 #include "addons/RTDBHelper.h"
 
+#define MAX_TOKENS 10  // adjust as needed
+
+String deviceTokens[MAX_TOKENS];
+int tokenCount = 0;
+
+
 // Wi-Fi credentials
-#define WIFI_SSID "QPPD"
-#define WIFI_PASSWORD "Programmer136"
-
-// Firebase project credentials
-#define API_KEY "AIzaSyBx9r5gmNMgi8V7CkuY868UA9VaSPzdMMI"
-#define DATABASE_URL "https://plastech-5436f-default-rtdb.firebaseio.com/"
-
-#define FIREBASE_PROJECT_ID "plastech-5436f"
-#define FIREBASE_CLIENT_EMAIL "firebase-adminsdk-fbsvc@plastech-5436f.iam.gserviceaccount.com"
-const char PRIVATE_KEY[] PROGMEM = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDjbVBWMNUj2sE2\nhreNyaaLOMBaPf5nE4sC+UOvakVrRAwdCZfHhRQtE7586XY9wXiKpkN/eObDo4Fq\nw4XoHt1R5WaTHFaog+CNxQVFIkEg/1zoktx6XVwJDjfgSk0XYLy/djNeg25GdNfA\n0T0mZLXVh9nBYX/JdKRGOr++flw54nf3C0USPNB6iGSxE4NqMsP/B/tO6LRvPiED\neX8UjcSFGD/rRxXDCX3BBXO2dDlPXHFX0hOxhKJmtJh/OGBbrUytMe21FTjcOTBV\naYlR0dFEpfHdrsxdeBDqXAOGMHCBHB4oo03syEWY4+wN2SsSNy8f8xBI4YhaaVt0\nBHaIpFZhAgMBAAECggEAAxP8rV311Ilmag2CuHmNNn8rI02Jfu2lyQGEqAAhNmVy\nYIY7tqiXcFC/GEO0pPtUXVQIv9XsEaPJ4Z8J1e1tA2m+bKlKhvdZ97E99ASVqxOp\nt0Admc5fq4O0v+Vhi7p0c4bvBQ10VaHJNcPfNwDP8TbofJSMPTbF7mlnJPXi26mt\ne4DdfaPGH37jhZTA1xJM5MC671Agea9rPXkU115c/VRvXUs0eZt7Zuzwd5w3C3KW\nHfEBjXqfxlBawAqbQUpjkN6qIcRlpYy178YmiulwxwzsM5+A0+zTZcnJVgP8ZAsm\nCKnCzsUt8qWHaUByi9KMw6IcVLxTsG6hxS4SHHLM0QKBgQD2rp1pGrR4jqfJSOsd\nZdXPCy1N58gVklervNGenH6NdFefxg5kUNN/rNI7/kX9RZEgwOyNoWuc3IU+anek\nZseL2kPFzcHlJn3QRRshuPOWwoHSnZnQqCYtc/6S/MAnkd8NGD97h5CmKx8oNy9e\nmJe5FoLfBNlCpQpVdLIyfjsyTQKBgQDsBIEysZydZj76g38mSLlSvIyNpJWR7fV8\nz6d/XXKu7bUrVdUwM5geSTTWAnIogoqAorG4JD/pRgjypKsArSKxKgZmHpYqdB0T\nJxThFdeuGb/mhkzYFdES6AaH+MAdDoquaaFy/+ru2P7CdXEADxjMR4a28CUC0dnq\nDmAJA4J2ZQKBgQCPPFj+fJkqH3thr0uGKGl77TuDLwDJNc5eVCdLeAcrz9BJX9Ff\ngmcsjYcNetnc9JYOdLdmjcJUtN9RnLSX624W0MflhVH+4tjPJDFa5W/brFmBmC2G\nMPzqC55YbxaMY3Emw1upONBPDF7tFQ4WWXhP6rhXExOsVPSpJjeKhi2NSQKBgBEf\nxov6DQXyjDE65zfM4P1axsvkHCIJZN1YZ6u7CP4eKx3ozV4A8FGKODYq2UONLSVm\nKITWxHhVZ4LLZcjXxwOZq/suzvBnmlBwbnhiUFLGdYDxT5QCCThY81hcOPwiuPcs\nnNUuMkqAHgPX54n8jm0L539Qby8EMM5lmpws0ANtAoGAeg9P8tuhDE3Wnm7l1HG2\n28k+vz/GJtZE83zT8rH9X/LlDb9kPCpfEqdteM7SxhpPGrZb3f+SNpVKqhB9P7Av\nx+OceUw7zimZ3lt3kVxnINoCnMlHTmqyJG8Gs9CFw8ZjXgHAGSug2XIgpRkB7wLQ\nx1GSAgt32yFyWr/uWM62hkk=\n-----END PRIVATE KEY-----\n";
-
-#define USER_EMAIL "sajedhm@gmail.com"
-#define USER_PASSWORD "Jedtala01+"
-
-#define DEVICE_REGISTRATION_ID_TOKEN "fho5o_l-SrOaUVkrrp4Af9:APA91bHxdYtuEyTATtPiv8bnXlYYtFZ_JKjKSpoqk1RPElBz6Ebe0NmkPLTZ2Embn8PYEqiB1DA_OrQ1WPgixyF0s-FbyXMKNfmMmLphXoMSqaS06xXePBo"
-
 
 
 FirebaseData fbdo;
@@ -52,6 +42,7 @@ void tokenStreamCallback(MultiPathStream stream) {
 
     // Begin iterating through all children under /tokens
     size_t count = json.iteratorBegin();
+    tokenCount = 0;  // reset token count before filling
 
     for (size_t i = 0; i < count; i++) {
       FirebaseJson::IteratorValue value = json.valueAt(i);
@@ -59,7 +50,7 @@ void tokenStreamCallback(MultiPathStream stream) {
 
       // Skip any key that doesn't contain a nested object
       if (!value.value.startsWith("{")) {
-        Serial.println("⚠️  Ignored non-object key: " + pushID);
+        Serial.println("Ignored non-object key: " + pushID);
         continue;
       }
 
@@ -68,10 +59,19 @@ void tokenStreamCallback(MultiPathStream stream) {
       if (json.get(result, fullPath)) {
         String deviceToken = result.stringValue;
         Serial.println("✅ Extracted device_token from " + pushID + ": " + deviceToken);
+
+        // Add to array if not full
+        if (tokenCount < MAX_TOKENS) {
+          deviceTokens[tokenCount++] = deviceToken;
+        } else {
+          Serial.println("⚠️  Token list full, cannot store more.");
+        }
+
       } else {
         Serial.println("⚠️  Skipping key (no device_token): " + pushID);
       }
     }
+
 
 
     // End iteration
@@ -165,14 +165,14 @@ void sendFIREBASEData(int bottle_large, int bottle_small, int bin_level, int tot
   }
 }
 
-void sendMessage() {
+void sendMessage(String title, String body) {
   Serial.print("Send Firebase Cloud Messaging... ");
 
   FCM_HTTPv1_JSON_Message msg;
   msg.token = DEVICE_REGISTRATION_ID_TOKEN;
 
-  msg.notification.body = "Notification body";
-  msg.notification.title = "Notification title";
+  msg.notification.body = title;
+  msg.notification.title = body;
 
   FirebaseJson payload;
   payload.add("status", "1");
@@ -183,5 +183,26 @@ void sendMessage() {
     Serial.printf("ok\n%s\n\n", Firebase.FCM.payload(&fbdo).c_str());
   } else {
     Serial.println(fbdo.errorReason());
+  }
+}
+
+void sendMessageToAll(String title, String body) {
+  for (int i = 0; i < tokenCount; i++) {
+    Serial.println("📲 Sending to: " + deviceTokens[i]);
+
+    FCM_HTTPv1_JSON_Message msg;
+    msg.token = deviceTokens[i];
+    msg.notification.title = title;
+    msg.notification.body = body;
+
+    FirebaseJson payload;
+    payload.add("status", "1");
+    msg.data = payload.raw();
+
+    if (Firebase.FCM.send(&fbdo, &msg)) {
+      Serial.println("Sent!");
+    } else {
+      Serial.println("Error: " + fbdo.errorReason());
+    }
   }
 }

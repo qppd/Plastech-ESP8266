@@ -1,6 +1,6 @@
-#include "NTP_CONFIG.h"
-#include "FIREBASE_CONFIG.h"
 
+#include "SECRETS.h"
+#include "FIREBASE_CONFIG.h"
 
 void setup() {
   Serial.begin(115200);
@@ -9,9 +9,10 @@ void setup() {
   initFIREBASE();
 
   // delay(3000);
-  
+
   // sendFIREBASEData(1,2,3,4,5,6);
   // sendMessage();
+  sendMessageToAll("PlasTech", "This is plastech first notification! Hi :)");
 }
 
 int bottle_large;
