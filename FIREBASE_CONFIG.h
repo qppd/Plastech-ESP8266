@@ -1,5 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <Firebase_ESP_Client.h>
+
+// Firebase Add-ons
 #include "addons/TokenHelper.h"
 #include "addons/RTDBHelper.h"
 
@@ -7,12 +9,15 @@
 #define WIFI_SSID "QPPD"
 #define WIFI_PASSWORD "Programmer136"
 
-// Firebase credentials
+// Firebase project credentials
 #define API_KEY "AIzaSyBx9r5gmNMgi8V7CkuY868UA9VaSPzdMMI"
 #define DATABASE_URL "https://plastech-5436f-default-rtdb.firebaseio.com/"
 
 #define USER_EMAIL "sajedhm@gmail.com"
-#define USER_PASSWORD "Admin1+"
+#define USER_PASSWORD "Jedtala01+"
+
+// Device Token for FCM
+#define DEVICE_REGISTRATION_ID_TOKEN "ecmu-phbT7m-xUJg0Kp5pS:APA91bGIsGng07vZk6CjYQci8yX-_9lBZ3PnDo-Uggm3hV1JhFZYyphhUnBMT-weMixZGF1UWc_6KW80b0vZVYy1BVaS8dYyL4YZB-KPGgU2ATNSRtTK8zc"
 
 // Firebase objects
 FirebaseData fbdo;
@@ -22,11 +27,9 @@ FirebaseConfig config;
 unsigned long sendDataPrevMillis = 0;
 
 void initFIREBASE() {
-  Serial.begin(115200);
-
+  // Connect to Wi-Fi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to Wi-Fi");
-  unsigned long ms = millis();
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
     delay(300);
@@ -39,29 +42,31 @@ void initFIREBASE() {
 
   Serial.printf("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);
 
-  // 1. Assign Firebase credentials
+  // Assign Firebase credentials
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
 
-  // 2. Assign Email and Password
+  // Assign email and password
   auth.user.email = USER_EMAIL;
   auth.user.password = USER_PASSWORD;
 
-  // 3. Optional: Set callback for token refresh info
+  // Optional: Token status callback
   config.token_status_callback = tokenStatusCallback;
 
-  // 4. Recommended settings
+  // Recommended settings
   Firebase.reconnectNetwork(true);
   fbdo.setBSSLBufferSize(4096, 1024);
   fbdo.setResponseSize(4096);
 
-  // 5. Begin Firebase with config and authentication
+  // Begin Firebase
   Firebase.begin(&config, &auth);
 
+  // Wait until Firebase is ready
   while (!Firebase.ready()) {
-    delay(100);  
+    delay(100);
   }
 
+  // Confirm login success
   if (auth.token.uid.length() > 0) {
     Serial.print("Signed in as UID: ");
     Serial.println(auth.token.uid.c_str());
@@ -70,29 +75,47 @@ void initFIREBASE() {
   }
 }
 
-
 void sendFIREBASEData(int bottle_large, int bottle_small, int bin_level, int total_rewards, int total_weight,
                       int coin_stock) {
-  if (Firebase.ready() && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)) {
-    sendDataPrevMillis = millis();
+  // Create JSON object
+  FirebaseJson json;
+  json.set("bottle_large", bottle_large);
+  json.set("bottle_small", bottle_small);
+  json.set("bin_level", bin_level);
+  json.set("total_rewards", total_rewards);
+  json.set("total_weight", total_weight);
+  json.set("coin_stock", coin_stock);
 
-    // Create JSON object
-    FirebaseJson json;
-    json.set("bottle_large", bottle_large);
-    json.set("bottle_small", bottle_small);
-    json.set("bin_level", bin_level);
-    json.set("total_rewards", total_rewards);
-    json.set("total_weight", total_weight);
-    json.set("coin_stock", coin_stock);
+  Serial.println("Sending bin data as JSON...");
 
-    Serial.println("Sending bin data as JSON...");
+  // Send to Firebase
+  if (Firebase.RTDB.setJSON(&fbdo, "/plastech/bin", &json)) {
+    Serial.println("Bin data sent successfully!");
+  } else {
+    Serial.print("Error sending bin data: ");
+    Serial.println(fbdo.errorReason());
+  }
+}
 
-    // Send JSON to Firebase
-    if (Firebase.RTDB.setJSON(&fbdo, "/plastech/bin", &json)) {
-      Serial.println("Bin data sent successfully!");
-    } else {
-      Serial.print("Error sending bin data: ");
-      Serial.println(fbdo.errorReason());
-    }
+void sendMessage() {
+  Serial.print("Send Firebase Cloud Messaging... ");
+
+  FCM_HTTPv1_JSON_Message msg;
+  msg.token = DEVICE_REGISTRATION_ID_TOKEN;
+
+  msg.notification.body = "Notification body";
+  msg.notification.title = "Notification title";
+
+  FirebaseJson payload;
+  payload.add("temp", "28");
+  payload.add("unit", "celsius");
+  payload.add("timestamp", "1609815454");
+
+  msg.data = payload.raw();
+
+  if (Firebase.FCM.send(&fbdo, &msg)) {
+    Serial.printf("ok\n%s\n\n", Firebase.FCM.payload(&fbdo).c_str());
+  } else {
+    Serial.println(fbdo.errorReason());
   }
 }
