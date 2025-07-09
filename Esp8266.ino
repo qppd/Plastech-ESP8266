@@ -7,6 +7,10 @@ void setup() {
   Serial.println("Starting ESP8266");
 
   initFIREBASE();
+
+  delay(3000);
+  sendFIREBASEData(1,2,3,4,5,6);
+  sendMessage();
 }
 
 int bottle_large;
@@ -19,12 +23,6 @@ int coin_stock;
 unsigned long lastTime = 0;
 
 void loop() {
-
-  if (Firebase.ready() && (millis() - lastTime > 60 * 1000 || lastTime == 0)) {
-    lastTime = millis();
-
-    sendMessage();
-  }
 
   // if (Firebase.ready() && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)) {
   //   sendDataPrevMillis = millis();
